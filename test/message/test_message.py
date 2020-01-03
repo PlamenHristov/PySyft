@@ -1,6 +1,7 @@
 import syft as sy
 import torch as th
-
+import pytest
+from syft.serde.msgpack.serde import detailers, serialize
 import syft as sy
 from syft.messaging import message
 
@@ -138,3 +139,21 @@ def test_search_message_serde():
     y = sy.serde.deserialize(x_bin, sy.local_worker)
 
     assert x.contents == y.contents
+
+
+def test_message_detail_returns_specific_type():
+    tensor = th.tensor([1, 2, 3, 4])
+    operation = message.Operation(
+        cmd_name="_add__",
+        cmd_owner=tensor,
+        cmd_args=(tensor,),
+        cmd_kwargs={},
+        return_ids=96100376575,
+    )
+
+    wrapped = message.SearchMessage(operation)
+    simplified_operation = message.Message.simplify(sy.local_worker, wrapped)
+    detailer = detailers[simplified_operation[0][0]]
+    detailed_operation = message.Message.detail(sy.local_worker, simplified_operation)
+
+    assert isinstance(detailed_operation, message.Operation)
